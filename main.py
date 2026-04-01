@@ -181,12 +181,12 @@ def show_menu() -> None:
     print("2. Remove student")
     print("3. Add assignment")
     print("4. Remove assignment")
-    print("5. Set student score")
+    print("5. Set score")
     print("6. View student")
     print("7. View all students")
-    print("8. Export report card(s)")
-    print("9. Exit")
-    print("====================\n")
+    print("8. Export report card (single student)")
+    print("9. Export all report cards")
+    print("10. Exit")
 
 def main() -> None:
     """Main CLI loop."""
@@ -194,11 +194,7 @@ def main() -> None:
     
     while True:
         show_menu()
-        try:
-            choice = input("Enter choice (1-9): ").strip()
-        except EOFError:
-            print("\nExiting Grade Tracker.")
-            break
+        choice = input("Enter choice (1-10): ").strip()
         
         if choice == "1":
             name = input("Student name: ").strip()
@@ -206,21 +202,21 @@ def main() -> None:
                 add_student(data, name)
         
         elif choice == "2":
-            name = input("Student name to remove: ").strip()
+            name = input("Student name: ").strip()
             if name:
                 remove_student(data, name)
         
         elif choice == "3":
             name = input("Assignment name: ").strip()
             try:
-                weight = float(input("Assignment weight: ").strip())
+                weight = float(input("Weight: ").strip())
                 if name:
                     add_assignment(data, name, weight)
             except ValueError:
-                print("Weight must be a number.")
+                print("Invalid weight. Must be a number.")
         
         elif choice == "4":
-            name = input("Assignment name to remove: ").strip()
+            name = input("Assignment name: ").strip()
             if name:
                 remove_assignment(data, name)
         
@@ -228,11 +224,11 @@ def main() -> None:
             student = input("Student name: ").strip()
             assignment = input("Assignment name: ").strip()
             try:
-                score = float(input("Score (0-100): ").strip())
+                score = float(input("Score: ").strip())
                 if student and assignment:
                     set_score(data, student, assignment, score)
             except ValueError:
-                print("Score must be a number.")
+                print("Invalid score. Must be a number.")
         
         elif choice == "6":
             name = input("Student name: ").strip()
@@ -243,20 +239,19 @@ def main() -> None:
             view_all(data)
         
         elif choice == "8":
-            export_all = input("Export all students? (y/n): ").strip().lower()
-            if export_all == "y":
-                export_report_card(data)
-            else:
-                student = input("Student name: ").strip()
-                if student:
-                    export_report_card(data, student)
+            name = input("Student name: ").strip()
+            if name:
+                export_report_card(data, name)
         
         elif choice == "9":
-            print("Exiting Grade Tracker.")
-            break
+            export_report_card(data)
+        
+        elif choice == "10":
+            print("Exiting...")
+            sys.exit(0)
         
         else:
-            print("Invalid choice. Please enter 1-9.")
+            print("Invalid choice. Try again.")
 
 if __name__ == "__main__":
     main()
