@@ -194,7 +194,11 @@ def main() -> None:
     
     while True:
         show_menu()
-        choice = input("Enter choice (1-9): ").strip()
+        try:
+            choice = input("Enter choice (1-9): ").strip()
+        except EOFError:
+            print("\nExiting Grade Tracker.")
+            break
         
         if choice == "1":
             name = input("Student name: ").strip()
@@ -243,16 +247,16 @@ def main() -> None:
             if export_all == "y":
                 export_report_card(data)
             else:
-                name = input("Student name: ").strip()
-                if name:
-                    export_report_card(data, name)
+                student = input("Student name: ").strip()
+                if student:
+                    export_report_card(data, student)
         
         elif choice == "9":
-            print("Goodbye!")
-            sys.exit(0)
+            print("Exiting Grade Tracker.")
+            break
         
         else:
-            print("Invalid choice. Try again.")
+            print("Invalid choice. Please enter 1-9.")
 
 if __name__ == "__main__":
     main()
