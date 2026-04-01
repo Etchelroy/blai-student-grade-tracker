@@ -1,240 +1,258 @@
 import json
 import os
 import sys
+from typing import Dict, List, Tuple
 
 DATA_FILE = "grades_data.json"
 
-def load_data():
+def load_data() -> Dict:
+    """Load grades data from JSON file."""
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r") as f:
             return json.load(f)
     return {"assignments": {}, "students": {}}
 
-def save_data(data):
+def save_data(data: Dict) -> None:
+    """Save grades data to JSON file."""
     with open(DATA_FILE, "w") as f:
         json.dump(data, f, indent=2)
 
-def weighted_average(scores, assignments):
+def weighted_average(scores: Dict[str, float], assignments: Dict[str, float]) -> float:
+    """Calculate weighted average of scores."""
+    if not assignments or sum(assignments.values()) == 0:
+        return 0.0
+    
     total_weight = 0.0
     weighted_sum = 0.0
+    
     for aname, weight in assignments.items():
-        if weight == 0:
-            continue
         if aname in scores and scores[aname] is not None:
             weighted_sum += scores[aname] * weight
             total_weight += weight
+    
     if total_weight == 0:
-        return None
+        return 0.0
+    
     return weighted_sum / total_weight
 
-def letter_grade(avg):
-    if avg is None:
-        return "N/A"
-    if avg >= 90:
+def letter_grade(average: float) -> str:
+    """Convert numeric average to letter grade."""
+    if average >= 90:
         return "A"
-    elif avg >= 80:
+    elif average >= 80:
         return "B"
-    elif avg >= 70:
+    elif average >= 70:
         return "C"
-    elif avg >= 60:
+    elif average >= 60:
         return "D"
     else:
         return "F"
 
-def add_student(data):
-    name = input("Student name: ").strip()
-    if not name:
-        print("Name cannot be empty.")
-        return
+def add_student(data: Dict, name: str) -> None:
+    """Add a new student."""
     if name in data["students"]:
         print(f"Student '{name}' already exists.")
         return
     data["students"][name] = {}
     save_data(data)
-    print(f"Student '{name}' added.")
+    print(f"Student '{name}' added successfully.")
 
-def remove_student(data):
-    name = input("Student name to remove: ").strip()
+def remove_student(data: Dict, name: str) -> None:
+    """Remove a student."""
     if name not in data["students"]:
         print(f"Student '{name}' not found.")
         return
     del data["students"][name]
     save_data(data)
-    print(f"Student '{name}' removed.")
+    print(f"Student '{name}' removed successfully.")
 
-def add_assignment(data):
-    aname = input("Assignment name: ").strip()
-    if not aname:
-        print("Assignment name cannot be empty.")
+def add_assignment(data: Dict, name: str, weight: float) -> None:
+    """Add a new assignment with weight."""
+    if weight <= 0:
+        print("Weight must be positive.")
         return
-    if aname in data["assignments"]:
-        print(f"Assignment '{aname}' already exists.")
+    if name in data["assignments"]:
+        print(f"Assignment '{name}' already exists.")
         return
-    try:
-        weight = float(input("Weight (e.g. 0.25 for 25%, or any positive number for relative): ").strip())
-    except ValueError:
-        print("Invalid weight.")
-        return
-    if weight < 0:
-        print("Weight cannot be negative.")
-        return
-    data["assignments"][aname] = weight
+    data["assignments"][name] = weight
     save_data(data)
-    print(f"Assignment '{aname}' with weight {weight} added.")
+    print(f"Assignment '{name}' added with weight {weight}.")
 
-def remove_assignment(data):
-    aname = input("Assignment name to remove: ").strip()
-    if aname not in data["assignments"]:
-        print(f"Assignment '{aname}' not found.")
+def remove_assignment(data: Dict, name: str) -> None:
+    """Remove an assignment."""
+    if name not in data["assignments"]:
+        print(f"Assignment '{name}' not found.")
         return
-    del data["assignments"][aname]
-    for sname in data["students"]:
-        data["students"][sname].pop(aname, None)
+    del data["assignments"][name]
+    for student in data["students"]:
+        if name in data["students"][student]:
+            del data["students"][student][name]
     save_data(data)
-    print(f"Assignment '{aname}' removed.")
+    print(f"Assignment '{name}' removed successfully.")
 
-def enter_scores(data):
-    if not data["students"]:
-        print("No students in the system.")
+def set_score(data: Dict, student: str, assignment: str, score: float) -> None:
+    """Set a student's score on an assignment."""
+    if student not in data["students"]:
+        print(f"Student '{student}' not found.")
         return
-    if not data["assignments"]:
-        print("No assignments in the system.")
+    if assignment not in data["assignments"]:
+        print(f"Assignment '{assignment}' not found.")
         return
-    sname = input("Student name: ").strip()
-    if sname not in data["students"]:
-        print(f"Student '{sname}' not found.")
+    if not (0 <= score <= 100):
+        print("Score must be between 0 and 100.")
         return
-    print(f"Enter scores for {sname} (press Enter to skip/leave missing):")
+    
+    data["students"][student][assignment] = score
+    save_data(data)
+    print(f"Score set: {student} on {assignment} = {score}")
+
+def view_student(data: Dict, name: str) -> None:
+    """Display student's scores and average."""
+    if name not in data["students"]:
+        print(f"Student '{name}' not found.")
+        return
+    
+    scores = data["students"][name]
+    avg = weighted_average(scores, data["assignments"])
+    grade = letter_grade(avg)
+    
+    print(f"\n--- {name} ---")
     for aname in data["assignments"]:
-        current = data["students"][sname].get(aname)
-        prompt = f"  {aname} (current: {current if current is not None else 'missing'}): "
-        val = input(prompt).strip()
-        if val == "":
-            continue
-        try:
-            score = float(val)
-            if score < 0 or score > 100:
-                print("  Score must be 0-100, skipping.")
-                continue
-            data["students"][sname][aname] = score
-        except ValueError:
-            print("  Invalid value, skipping.")
-    save_data(data)
-    print("Scores saved.")
+        score = scores.get(aname, "Missing")
+        print(f"  {aname}: {score}")
+    print(f"Weighted Average: {avg:.2f}")
+    print(f"Letter Grade: {grade}\n")
 
-def list_students(data):
+def view_all(data: Dict) -> None:
+    """Display all students with their averages."""
     if not data["students"]:
         print("No students in the system.")
         return
-    if not data["assignments"]:
-        print("No assignments defined yet.")
-    print(f"\n{'Student':<20} {'Avg':>6} {'Grade':>5}")
-    print("-" * 35)
-    for sname, scores in data["students"].items():
+    
+    print("\n--- All Students ---")
+    for name in sorted(data["students"]):
+        scores = data["students"][name]
         avg = weighted_average(scores, data["assignments"])
         grade = letter_grade(avg)
-        avg_str = f"{avg:.2f}" if avg is not None else "N/A"
-        print(f"{sname:<20} {avg_str:>6} {grade:>5}")
+        print(f"{name}: {avg:.2f} ({grade})")
     print()
 
-def list_assignments(data):
-    if not data["assignments"]:
-        print("No assignments in the system.")
-        return
-    print(f"\n{'Assignment':<25} {'Weight':>8}")
-    print("-" * 35)
-    total_w = sum(data["assignments"].values())
-    for aname, weight in data["assignments"].items():
-        print(f"{aname:<25} {weight:>8.4f}")
-    print(f"{'Total weight:':<25} {total_w:>8.4f}\n")
-
-def export_report(data):
-    if not data["students"]:
-        print("No students to export.")
-        return
-    choice = input("Export for (a)ll students or (s)ingle student? ").strip().lower()
-    if choice == "s":
-        sname = input("Student name: ").strip()
-        if sname not in data["students"]:
-            print(f"Student '{sname}' not found.")
+def export_report_card(data: Dict, student: str = None) -> None:
+    """Export formatted report card(s) to text file(s)."""
+    if student:
+        if student not in data["students"]:
+            print(f"Student '{student}' not found.")
             return
-        students_to_export = {sname: data["students"][sname]}
+        students_to_export = {student: data["students"][student]}
     else:
+        if not data["students"]:
+            print("No students to export.")
+            return
         students_to_export = data["students"]
-
-    for sname, scores in students_to_export.items():
-        lines = []
-        lines.append("=" * 45)
-        lines.append("           STUDENT REPORT CARD")
-        lines.append("=" * 45)
-        lines.append(f"Student : {sname}")
-        lines.append("-" * 45)
-        if not data["assignments"]:
-            lines.append("No assignments defined.")
-        else:
-            lines.append(f"{'Assignment':<22} {'Weight':>7} {'Score':>7}")
-            lines.append("-" * 45)
-            total_weight = 0.0
-            for aname, weight in data["assignments"].items():
-                score = scores.get(aname)
-                score_str = f"{score:.2f}" if score is not None else "missing"
-                lines.append(f"{aname:<22} {weight:>7.4f} {score_str:>7}")
-                total_weight += weight
-            lines.append("-" * 45)
-            lines.append(f"{'Total Weight':<22} {total_weight:>7.4f}")
-            lines.append("-" * 45)
+    
+    for name, scores in students_to_export.items():
         avg = weighted_average(scores, data["assignments"])
         grade = letter_grade(avg)
-        avg_str = f"{avg:.2f}" if avg is not None else "N/A"
-        lines.append(f"Weighted Average : {avg_str}")
-        lines.append(f"Letter Grade     : {grade}")
-        lines.append("=" * 45)
-        lines.append("")
-
-        safe_name = sname.replace(" ", "_").replace("/", "_")
-        filename = f"report_{safe_name}.txt"
+        
+        filename = f"{name.replace(' ', '_')}_report.txt"
         with open(filename, "w") as f:
-            f.write("\n".join(lines))
-        print(f"Report saved: {filename}")
+            f.write("=" * 50 + "\n")
+            f.write(f"REPORT CARD: {name}\n")
+            f.write("=" * 50 + "\n\n")
+            
+            f.write("ASSIGNMENT SCORES:\n")
+            f.write("-" * 50 + "\n")
+            for aname in sorted(data["assignments"]):
+                score = scores.get(aname, "Missing")
+                weight = data["assignments"][aname]
+                f.write(f"{aname:<30} {str(score):<10} (weight: {weight})\n")
+            
+            f.write("\n" + "=" * 50 + "\n")
+            f.write(f"WEIGHTED AVERAGE: {avg:.2f}\n")
+            f.write(f"LETTER GRADE: {grade}\n")
+            f.write("=" * 50 + "\n")
+        
+        print(f"Report card exported: {filename}")
 
-def print_menu():
-    print("\n--- Grade Tracker ---")
+def show_menu() -> None:
+    """Display the CLI menu."""
+    print("\n=== Grade Tracker ===")
     print("1. Add student")
     print("2. Remove student")
     print("3. Add assignment")
     print("4. Remove assignment")
-    print("5. Enter/update scores")
-    print("6. List students & grades")
-    print("7. List assignments")
+    print("5. Set student score")
+    print("6. View student")
+    print("7. View all students")
     print("8. Export report card(s)")
     print("9. Exit")
+    print("====================\n")
 
-def main():
+def main() -> None:
+    """Main CLI loop."""
     data = load_data()
+    
     while True:
-        print_menu()
-        choice = input("Choice: ").strip()
+        show_menu()
+        choice = input("Enter choice (1-9): ").strip()
+        
         if choice == "1":
-            add_student(data)
+            name = input("Student name: ").strip()
+            if name:
+                add_student(data, name)
+        
         elif choice == "2":
-            remove_student(data)
+            name = input("Student name to remove: ").strip()
+            if name:
+                remove_student(data, name)
+        
         elif choice == "3":
-            add_assignment(data)
+            name = input("Assignment name: ").strip()
+            try:
+                weight = float(input("Assignment weight: ").strip())
+                if name:
+                    add_assignment(data, name, weight)
+            except ValueError:
+                print("Weight must be a number.")
+        
         elif choice == "4":
-            remove_assignment(data)
+            name = input("Assignment name to remove: ").strip()
+            if name:
+                remove_assignment(data, name)
+        
         elif choice == "5":
-            enter_scores(data)
+            student = input("Student name: ").strip()
+            assignment = input("Assignment name: ").strip()
+            try:
+                score = float(input("Score (0-100): ").strip())
+                if student and assignment:
+                    set_score(data, student, assignment, score)
+            except ValueError:
+                print("Score must be a number.")
+        
         elif choice == "6":
-            list_students(data)
+            name = input("Student name: ").strip()
+            if name:
+                view_student(data, name)
+        
         elif choice == "7":
-            list_assignments(data)
+            view_all(data)
+        
         elif choice == "8":
-            export_report(data)
+            export_all = input("Export all students? (y/n): ").strip().lower()
+            if export_all == "y":
+                export_report_card(data)
+            else:
+                name = input("Student name: ").strip()
+                if name:
+                    export_report_card(data, name)
+        
         elif choice == "9":
-            print("Goodbye.")
+            print("Goodbye!")
             sys.exit(0)
+        
         else:
-            print("Invalid choice.")
+            print("Invalid choice. Try again.")
 
 if __name__ == "__main__":
     main()
